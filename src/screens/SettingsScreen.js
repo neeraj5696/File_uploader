@@ -13,12 +13,13 @@ import {
   NativeModules,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+import { useStorage } from '../context/StorageContext';
 
 const { PermissionModule } = NativeModules;
 
 const SettingsScreen = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const [storageLocation, setStorageLocation] = useState('/storage/emulated/0/Recordings');
+  const { storageLocation, setStorageLocation } = useStorage();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentPath, setCurrentPath] = useState('/storage/emulated/0');
   const [folders, setFolders] = useState([]);
@@ -124,11 +125,12 @@ const SettingsScreen = () => {
 
   const selectFolder = async (folderPath) => {
     setStorageLocation(folderPath);
+    setCustomPath(folderPath);
     const files = await detectFiles(folderPath);
     setModalVisible(false);
     Alert.alert(
       'Success', 
-      `Storage location updated\nFound ${files.length} audio files`
+      `Storage location updated to: ${folderPath}\nFound ${files.length} audio files`
     );
   };
 
@@ -138,6 +140,7 @@ const SettingsScreen = () => {
 
   const navigateToFolder = (folder) => {
     loadFolders(folder.path);
+    setCustomPath(folder.path);
   };
 
   const goBack = () => {
@@ -147,9 +150,10 @@ const SettingsScreen = () => {
     }
   };
 
-  const useCustomPath = () => {
+  const useCustomPath = async () => {
     if (customPath.trim()) {
       setStorageLocation(customPath.trim());
+      await detectFiles(customPath.trim());
       setModalVisible(false);
       Alert.alert('Success', 'Custom path set successfully');
     }

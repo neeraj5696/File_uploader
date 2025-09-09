@@ -8,14 +8,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import OfflineScreen from './src/screens/OfflineScreen';
 import OnlineScreen from './src/screens/OnlineScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import { StorageProvider } from './src/context/StorageContext';
 
 const Tab = createBottomTabNavigator();
 
 function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-      <NavigationContainer>
+    <StorageProvider>
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+        <NavigationContainer>
         <Tab.Navigator
           screenOptions={{
             tabBarActiveTintColor: '#007AFF',
@@ -49,8 +51,9 @@ function App() {
             }}
           />
         </Tab.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </StorageProvider>
   );
 }
 

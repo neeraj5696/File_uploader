@@ -7,14 +7,15 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+import { useStorage } from '../context/StorageContext';
 
 const OfflineScreen = () => {
   const [storageFiles, setStorageFiles] = useState([]);
-  const storageLocation = '/storage/emulated/0/Recordings';
+  const { storageLocation } = useStorage();
 
   useEffect(() => {
     loadStorageFiles();
-  }, []);
+  }, [storageLocation]);
 
   const loadStorageFiles = async () => {
     try {
