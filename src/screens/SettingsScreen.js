@@ -10,8 +10,11 @@ import {
   Modal,
   TextInput,
   FlatList,
+  NativeModules,
 } from 'react-native';
 import RNFS from 'react-native-fs';
+
+const { PermissionModule } = NativeModules;
 
 const SettingsScreen = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -21,10 +24,48 @@ const SettingsScreen = () => {
   const [folders, setFolders] = useState([]);
   const [customPath, setCustomPath] = useState('');
   const [detectedFiles, setDetectedFiles] = useState([]);
+  const [allFiles, setAllFiles] = useState([]);
+  const [showFileList, setShowFileList] = useState(false);
 
   useEffect(() => {
-    detectFiles(storageLocation);
+    requestPermissions();
   }, []);
+
+  const requestPermissions = async () => {
+    try {
+      const storageResult = await PermissionModule.requestStoragePermission();
+      console.log('Storage permission result:', storageResult);
+      
+      if (storageResult === 'granted') {
+        detectFiles(storageLocation);
+        Alert.alert('Success', 'Full storage access granted');
+      } else if (storageResult === 'requested') {
+        Alert.alert(
+          'Permission Required',
+          'Please enable "All files access" for this app in the settings that just opened',
+          [
+            { text: 'OK', onPress: () => {
+              setTimeout(async () => {
+                const isGranted = await PermissionModule.checkStoragePermission();
+                if (isGranted) {
+                  detectFiles(storageLocation);
+                  Alert.alert('Success', 'Full storage access enabled');
+                }
+              }, 2000);
+            }}
+          ]
+        );
+      }
+      
+      const phoneResult = await PermissionModule.requestPhonePermission();
+      if (phoneResult !== 'granted') {
+        Alert.alert('Phone Permission', 'Phone permission needed for call recording');
+      }
+    } catch (error) {
+      console.log('Permission error:', error);
+      Alert.alert('Error', `Permission error: ${error.message}`);
+    }
+  };
 
   const loadFolders = async (path) => {
     try {
@@ -71,6 +112,7 @@ const SettingsScreen = () => {
       
       console.log('Audio files found:', audioFiles.length);
       setDetectedFiles(audioFiles);
+      setAllFiles(allFiles);
       return audioFiles;
     } catch (error) {
       console.log('Error detecting files:', error.message);
@@ -172,6 +214,21 @@ const SettingsScreen = () => {
               <TouchableOpacity onPress={refreshFiles}>
                 <Text style={styles.refreshText}>Tap to refresh</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={requestPermissions}>
+                <Text style={styles.permissionText}>Request permissions</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowFileList(!showFileList)}>
+                <Text style={styles.permissionText}>Show all files ({allFiles.length})</Text>
+              </TouchableOpacity>
+              {showFileList && (
+                <View style={styles.fileListContainer}>
+                  {allFiles.map((file, index) => (
+                    <Text key={index} style={styles.fileItem}>
+                      📄 {file.name} ({(file.size / 1024).toFixed(1)}KB)
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
           </TouchableOpacity>
 
@@ -482,6 +539,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#007AFF',
     marginTop: 2,
+  },
+  permissionText: {
+    fontSize: 10,
+    color: '#FF3B30',
+    marginTop: 2,
+  },
+  fileListContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
+    maxHeight: 200,
+  },
+  fileItem: {
+    fontSize: 10,
+    color: '#333',
+    paddingVertical: 2,
   },
 });
 

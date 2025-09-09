@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,29 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 
 const OfflineScreen = () => {
+  const [storageFiles, setStorageFiles] = useState([]);
+  const storageLocation = '/storage/emulated/0/Recordings';
+
+  useEffect(() => {
+    loadStorageFiles();
+  }, []);
+
+  const loadStorageFiles = async () => {
+    try {
+      const exists = await RNFS.exists(storageLocation);
+      if (exists) {
+        const items = await RNFS.readDir(storageLocation);
+        const files = items.filter(item => !item.isDirectory());
+        setStorageFiles(files);
+      }
+    } catch (error) {
+      console.log('Error loading files:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Offline Mode</Text>
@@ -18,11 +39,18 @@ const OfflineScreen = () => {
           <Text style={styles.cardSubtitle}>Access your offline recordings</Text>
         </View>
 
-
+        <TouchableOpacity style={styles.button}>
+          <Text style={styles.buttonText}>Start Recording</Text>
+        </TouchableOpacity>
 
         <View style={styles.recordingsList}>
-          <Text style={styles.sectionTitle}>Recent Recordings</Text>
-
+          <Text style={styles.sectionTitle}>Recent Recordings ({storageFiles.length})</Text>
+          {storageFiles.map((file, index) => (
+            <View key={index} style={styles.recordingItem}>
+              <Text style={styles.recordingName}>{file.name}</Text>
+              <Text style={styles.recordingDate}>{(file.size / 1024).toFixed(1)}KB</Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>
