@@ -8,9 +8,17 @@ import {
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { useStorage } from '../context/StorageContext';
+import MiniPlayer from '../componentes/MiniPlayer';
+import FullPlayer from '../componentes/FullPlayer';
+import audioService from '../services/audioService';
 
 const OfflineScreen = () => {
   const [storageFiles, setStorageFiles] = useState([]);
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showFullPlayer, setShowFullPlayer] = useState(false);
   const { storageLocation } = useStorage();
 
   useEffect(() => {
@@ -30,6 +38,43 @@ const OfflineScreen = () => {
     }
   };
 
+  const loadAndPlayTrack = (file) => {
+    audioService.loadTrack(
+      file.path,
+      (trackDuration) => {
+        setDuration(trackDuration);
+        setIsPlaying(true);
+        audioService.play(updateProgress);
+      },
+      updateProgress
+    );
+  };
+
+  const updateProgress = (current, total) => {
+    setCurrentTime(current);
+    if (total) setDuration(total);
+  };
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      audioService.pause();
+    } else {
+      audioService.play(updateProgress);
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (time) => {
+    audioService.seekTo(time);
+    setCurrentTime(time);
+  };
+
+  useEffect(() => {
+    return () => {
+      audioService.release();
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Offline Mode</Text>
@@ -47,13 +92,43 @@ const OfflineScreen = () => {
         <View style={styles.recordingsList}>
           <Text style={styles.sectionTitle}>Recent Recordings ({storageFiles.length})</Text>
           {storageFiles.map((file, index) => (
-            <View key={index} style={styles.recordingItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.recordingItem}
+              onPress={() => {
+                setCurrentTrack(file);
+                loadAndPlayTrack(file);
+              }}
+            >
               <Text style={styles.recordingName}>{file.name}</Text>
               <Text style={styles.recordingDate}>{(file.size / 1024).toFixed(1)}KB</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+      
+      {currentTrack && (
+        <MiniPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onExpand={() => setShowFullPlayer(true)}
+        />
+      )}
+      
+      <FullPlayer
+        visible={showFullPlayer}
+        onClose={() => setShowFullPlayer(false)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+      />
     </View>
   );
 };
@@ -123,6 +198,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
   recordingName: {
     fontSize: 16,
