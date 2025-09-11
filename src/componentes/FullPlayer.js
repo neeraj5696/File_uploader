@@ -8,7 +8,6 @@ import {
   Dimensions 
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -34,17 +33,17 @@ const FullPlayer = ({
         <View style={styles.dragIndicator} />
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <Icon name="keyboard-arrow-down" size={28} color="#333" />
+            <Text style={styles.headerIcon}>↓</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Now Playing</Text>
           <TouchableOpacity onPress={onClose}>
-            <Icon name="close" size={24} color="#333" />
+            <Text style={styles.headerIcon}>×</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.artwork}>
           <View style={styles.artworkPlaceholder}>
-            <Icon name="music-note" size={80} color="#ccc" />
+            <Text style={styles.musicIcon}>🎧</Text>
           </View>
         </View>
 
@@ -69,19 +68,17 @@ const FullPlayer = ({
 
         <View style={styles.controls}>
           <TouchableOpacity style={styles.controlButton}>
-            <Icon name="skip-previous" size={32} color="#333" />
+            <Text style={styles.controlIcon}>⏮️</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.playButton} onPress={onPlayPause}>
-            <Icon 
-              name={isPlaying ? 'pause' : 'play-arrow'} 
-              size={36} 
-              color="#fff" 
-            />
+            <Text style={styles.playIcon}>
+              {isPlaying ? '⏸️' : '▶️'}
+            </Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.controlButton}>
-            <Icon name="skip-next" size={32} color="#333" />
+            <Text style={styles.controlIcon}>⏭️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -175,6 +172,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 20,
+  },
+  headerIcon: {
+    fontSize: 24,
+    color: '#333',
+  },
+  musicIcon: {
+    fontSize: 60,
+  },
+  controlIcon: {
+    fontSize: 28,
+    color: '#333',
+  },
+  playIcon: {
+    fontSize: 24,
+    color: '#fff',
   },
 });
 

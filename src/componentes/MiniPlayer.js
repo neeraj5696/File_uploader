@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const MiniPlayer = ({ 
   currentTrack, 
@@ -31,11 +30,9 @@ const MiniPlayer = ({
         </View>
         
         <TouchableOpacity style={styles.playButton} onPress={onPlayPause}>
-          <Icon 
-            name={isPlaying ? 'pause' : 'play-arrow'} 
-            size={24} 
-            color="#fff" 
-          />
+          <Text style={styles.playIcon}>
+            {isPlaying ? '⏸️' : '▶️'}
+          </Text>
         </TouchableOpacity>
       </TouchableOpacity>
       
@@ -92,6 +89,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  playIcon: {
+    fontSize: 18,
+    color: '#fff',
   },
   seekBar: {
     height: 20,
