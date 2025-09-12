@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -34,6 +34,7 @@ function App() {
             component={OfflineScreen}
             options={{
               tabBarLabel: 'Offline',
+              tabBarIcon: () => <Text style={{fontSize: 20}}>📱</Text>,
             }}
           />
           <Tab.Screen 
@@ -41,6 +42,7 @@ function App() {
             component={OnlineScreen}
             options={{
               tabBarLabel: 'Online',
+              tabBarIcon: () => <Text style={{fontSize: 20}}>☁️</Text>,
             }}
           />
           <Tab.Screen 
@@ -48,6 +50,7 @@ function App() {
             component={SettingsScreen}
             options={{
               tabBarLabel: 'Settings',
+              tabBarIcon: () => <Text style={{fontSize: 20}}>⚙️</Text>,
             }}
           />
         </Tab.Navigator>

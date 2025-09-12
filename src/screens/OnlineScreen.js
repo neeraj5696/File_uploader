@@ -1,13 +1,84 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import firebaseService from '../services/firebase';
+import { useStorage } from '../context/StorageContext';
+import RNFS from 'react-native-fs';
+import MiniPlayer from '../componentes/MiniPlayer';
+import FullPlayer from '../componentes/FullPlayer';
+import audioService from '../services/audioService';
 
 const OnlineScreen = () => {
+  const [cloudFiles, setCloudFiles] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showFullPlayer, setShowFullPlayer] = useState(false);
+  const { storageLocation } = useStorage();
+
+  useEffect(() => {
+    loadCloudFiles();
+  }, []);
+
+  const loadCloudFiles = async () => {
+    console.log('🌐 OnlineScreen: Starting to load cloud files...');
+    setLoading(true);
+    try {
+      const files = await firebaseService.listFiles();
+      console.log('🌐 OnlineScreen: Received files from Firebase:', files);
+      setCloudFiles(files);
+      console.log('🌐 OnlineScreen: Cloud files state updated, count:', files.length);
+    } catch (error) {
+      console.log('🌐 OnlineScreen: Error loading cloud files:', error);
+      Alert.alert('Error', 'Failed to load cloud files');
+    }
+    setLoading(false);
+  };
+
+
+
+
+
+  const playCloudFile = async (file) => {
+    setCurrentTrack({ ...file, isCloud: true });
+    audioService.loadTrack(
+      file.url,
+      (trackDuration) => {
+        setDuration(trackDuration);
+        setIsPlaying(true);
+        audioService.play(updateProgress);
+      },
+      updateProgress
+    );
+  };
+
+  const updateProgress = (current, total) => {
+    setCurrentTime(current);
+    if (total) setDuration(total);
+  };
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      audioService.pause();
+    } else {
+      audioService.play(updateProgress);
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (time) => {
+    audioService.seekTo(time);
+    setCurrentTime(time);
+  };
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Online Mode</Text>
@@ -24,16 +95,57 @@ const OnlineScreen = () => {
         </View>
 
        
-        <TouchableOpacity style={[styles.button, styles.syncButton]}>
-          <Text style={styles.buttonText}>Sync All Recordings</Text>
+        <TouchableOpacity 
+          style={[styles.button, styles.syncButton]}
+          onPress={loadCloudFiles}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? 'Loading...' : 'Refresh Cloud Files'}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.cloudRecordingsList}>
-          <Text style={styles.sectionTitle}>Cloud Recordings</Text>
-          
-          
+          <Text style={styles.sectionTitle}>Cloud Recordings ({cloudFiles.length})</Text>
+          {cloudFiles.map((file, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={styles.recordingItem}
+              onPress={() => playCloudFile(file)}
+            >
+              <Text style={styles.recordingName}>{file.name}</Text>
+              <Text style={styles.recordingDate}>
+                {(file.size / 1024).toFixed(1)}KB • {new Date(file.timeCreated).toLocaleDateString()}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
+
+
       </ScrollView>
+      
+      {currentTrack && (
+        <MiniPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onExpand={() => setShowFullPlayer(true)}
+        />
+      )}
+      
+      <FullPlayer
+        visible={showFullPlayer}
+        onClose={() => setShowFullPlayer(false)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+      />
     </View>
   );
 };
@@ -120,6 +232,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 15,
   },
+
   recordingItem: {
     paddingVertical: 10,
     borderBottomWidth: 1,

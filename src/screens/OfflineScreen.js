@@ -11,6 +11,7 @@ import { useStorage } from '../context/StorageContext';
 import MiniPlayer from '../componentes/MiniPlayer';
 import FullPlayer from '../componentes/FullPlayer';
 import audioService from '../services/audioService';
+import firebaseService from '../services/firebase';
 
 const OfflineScreen = () => {
   const [storageFiles, setStorageFiles] = useState([]);
@@ -38,15 +39,15 @@ const OfflineScreen = () => {
     }
   };
 
-  const loadAndPlayTrack = (file) => {
+  const loadAndPlayTrack = file => {
     audioService.loadTrack(
       file.path,
-      (trackDuration) => {
+      trackDuration => {
         setDuration(trackDuration);
         setIsPlaying(true);
         audioService.play(updateProgress);
       },
-      updateProgress
+      updateProgress,
     );
   };
 
@@ -64,9 +65,24 @@ const OfflineScreen = () => {
     setIsPlaying(!isPlaying);
   };
 
-  const handleSeek = (time) => {
+  const handleSeek = time => {
     audioService.seekTo(time);
     setCurrentTime(time);
+  };
+
+  const uploadFile = async file => {
+    try {
+      console.log('📱 OfflineScreen: Starting upload for file:', file.name);
+      console.log('📱 OfflineScreen: File details:', file);
+
+      const result = await firebaseService.uploadFile(file.path, file.name);
+      console.log('📱 OfflineScreen: Upload completed, result:', result);
+
+      Alert.alert('Success', 'File uploaded to cloud');
+    } catch (error) {
+      console.log('📱 OfflineScreen: Upload error:', error);
+      Alert.alert('Error', `Upload failed: ${error.message}`);
+    }
   };
 
   useEffect(() => {
@@ -80,33 +96,37 @@ const OfflineScreen = () => {
       <Text style={styles.title}>Offline Mode</Text>
 
       <ScrollView style={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Local Recordings</Text>
-          <Text style={styles.cardSubtitle}>Access your offline recordings</Text>
-        </View>
-
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Start Recording</Text>
-        </TouchableOpacity>
-
         <View style={styles.recordingsList}>
-          <Text style={styles.sectionTitle}>Recent Recordings ({storageFiles.length})</Text>
+          <Text style={styles.sectionTitle}>
+            Recent Recordings ({storageFiles.length})
+          </Text>
           {storageFiles.map((file, index) => (
-            <TouchableOpacity 
-              key={index} 
-              style={styles.recordingItem}
-              onPress={() => {
-                setCurrentTrack(file);
-                loadAndPlayTrack(file);
-              }}
-            >
-              <Text style={styles.recordingName}>{file.name}</Text>
-              <Text style={styles.recordingDate}>{(file.size / 1024).toFixed(1)}KB</Text>
-            </TouchableOpacity>
+            <View key={index} style={styles.recordingItem}>
+              <TouchableOpacity
+                style={styles.fileInfo}
+                onPress={() => {
+                  setCurrentTrack(file);
+                  loadAndPlayTrack(file);
+                }}
+              >
+                <Text style={styles.recordingName}>{file.name}</Text>
+                <Text style={styles.recordingDate}>
+                  {(file.size / 1024).toFixed(1)}KB
+                </Text>
+              </TouchableOpacity>
+
+              {/*  Upload button */}
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={() => uploadFile(file)}
+              >
+                <Text style={styles.uploadButtonText}>⬆️</Text>
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       </ScrollView>
-      
+
       {currentTrack && (
         <MiniPlayer
           currentTrack={currentTrack}
@@ -118,7 +138,7 @@ const OfflineScreen = () => {
           onExpand={() => setShowFullPlayer(true)}
         />
       )}
-      
+
       <FullPlayer
         visible={showFullPlayer}
         onClose={() => setShowFullPlayer(false)}
@@ -150,39 +170,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  card: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#666',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
   recordingsList: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -199,6 +187,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  uploadButton: {
+    padding: 8,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  uploadButtonText: {
+    fontSize: 16,
   },
   recordingName: {
     fontSize: 16,
