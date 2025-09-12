@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { useStorage } from '../context/StorageContext';
@@ -15,6 +16,7 @@ import firebaseService from '../services/firebase';
 
 const OfflineScreen = () => {
   const [storageFiles, setStorageFiles] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState(new Set());
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,6 +26,14 @@ const OfflineScreen = () => {
 
   useEffect(() => {
     loadStorageFiles();
+    loadUploadedFiles();
+    
+    // Auto-upload check every 5 seconds
+    const interval = setInterval(() => {
+      checkForNewFiles();
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [storageLocation]);
 
   const loadStorageFiles = async () => {
@@ -36,6 +46,43 @@ const OfflineScreen = () => {
       }
     } catch (error) {
       console.log('Error loading files:', error);
+    }
+  };
+
+  const loadUploadedFiles = async () => {
+    try {
+      const cloudFiles = await firebaseService.listFiles();
+      const uploadedNames = new Set(cloudFiles.map(file => file.name));
+      setUploadedFiles(uploadedNames);
+    } catch (error) {
+      console.log('Error loading uploaded files:', error);
+    }
+  };
+
+  const checkForNewFiles = async () => {
+    try {
+      const exists = await RNFS.exists(storageLocation);
+      if (exists) {
+        const items = await RNFS.readDir(storageLocation);
+        const files = items.filter(item => !item.isDirectory());
+        
+        // Get current uploaded files from Firebase
+        const cloudFiles = await firebaseService.listFiles();
+        const currentUploaded = new Set(cloudFiles.map(file => file.name));
+        setUploadedFiles(currentUploaded);
+        
+        // Check for new files not yet uploaded
+        for (const file of files) {
+          if (!currentUploaded.has(file.name)) {
+            console.log('🔄 Auto-uploading new file:', file.name);
+            await uploadFile(file, true);
+          }
+        }
+        
+        setStorageFiles(files);
+      }
+    } catch (error) {
+      console.log('Error checking for new files:', error);
     }
   };
 
@@ -70,18 +117,30 @@ const OfflineScreen = () => {
     setCurrentTime(time);
   };
 
-  const uploadFile = async file => {
+  const uploadFile = async (file, isAutoUpload = false) => {
+    // Check if already uploaded
+    if (uploadedFiles.has(file.name)) {
+      console.log('✅ File already uploaded:', file.name);
+      return;
+    }
+    
     try {
       console.log('📱 OfflineScreen: Starting upload for file:', file.name);
-      console.log('📱 OfflineScreen: File details:', file);
-
+      
       const result = await firebaseService.uploadFile(file.path, file.name);
       console.log('📱 OfflineScreen: Upload completed, result:', result);
-
-      Alert.alert('Success', 'File uploaded to cloud');
+      
+      // Add to uploaded files set
+      setUploadedFiles(prev => new Set([...prev, file.name]));
+      
+      if (!isAutoUpload) {
+        Alert.alert('Success', 'File uploaded to cloud');
+      }
     } catch (error) {
       console.log('📱 OfflineScreen: Upload error:', error);
-      Alert.alert('Error', `Upload failed: ${error.message}`);
+      if (!isAutoUpload) {
+        Alert.alert('Error', `Upload failed: ${error.message}`);
+      }
     }
   };
 
@@ -115,13 +174,19 @@ const OfflineScreen = () => {
                 </Text>
               </TouchableOpacity>
 
-              {/*  Upload button */}
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={() => uploadFile(file)}
-              >
-                <Text style={styles.uploadButtonText}>⬆️</Text>
-              </TouchableOpacity>
+              {/* Upload status */}
+              {uploadedFiles.has(file.name) ? (
+                <View style={styles.uploadedIndicator}>
+                  <Text style={styles.uploadedText}>✅</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => uploadFile(file)}
+                >
+                  <Text style={styles.uploadButtonText}>⬆️</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))}
         </View>
@@ -200,6 +265,15 @@ const styles = StyleSheet.create({
   },
   uploadButtonText: {
     fontSize: 16,
+  },
+  uploadedIndicator: {
+    padding: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+  },
+  uploadedText: {
+    fontSize: 16,
+    color: '#fff',
   },
   recordingName: {
     fontSize: 16,
