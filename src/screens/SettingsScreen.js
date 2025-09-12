@@ -14,11 +14,12 @@ import {
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { useStorage } from '../context/StorageContext';
+import { useTheme } from '../context/ThemeContext';
 
 const { PermissionModule } = NativeModules;
 
 const SettingsScreen = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, isDarkMode, toggleTheme } = useTheme();
   const { storageLocation, setStorageLocation } = useStorage();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentPath, setCurrentPath] = useState('/storage/emulated/0');
@@ -160,56 +161,56 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
       
       <ScrollView style={styles.content}>
         {/* User Profile Section */}
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { backgroundColor: theme.surface }]}>
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
               <Text style={styles.profileInitial}>JD</Text>
             </View>
           </View>
-          <Text style={styles.userName}>John Doe</Text>
-          <Text style={styles.userEmail}>john.doe@example.com</Text>
+          <Text style={[styles.userName, { color: theme.text }]}>John Doe</Text>
+          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>john.doe@example.com</Text>
           <TouchableOpacity style={styles.editProfileButton}>
             <Text style={styles.editProfileText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Settings */}
-        <View style={styles.settingsSection}>
-          <Text style={styles.sectionTitle}>App Settings</Text>
+        <View style={[styles.settingsSection, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text, borderBottomColor: theme.border }]}>App Settings</Text>
           
-          <View style={styles.settingItem}>
-            <Text style={styles.settingLabel}>Dark Mode</Text>
+          <View style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>Dark Mode</Text>
             <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
+              value={isDarkMode}
+              onValueChange={toggleTheme}
               trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={darkMode ? '#f5dd4b' : '#f4f3f4'}
+              thumbColor={isDarkMode ? '#f5dd4b' : '#f4f3f4'}
             />
           </View>
           
-          <TouchableOpacity style={styles.settingItem}>
-            <Text style={styles.settingLabel}>Notifications</Text>
-            <Text style={styles.settingValue}>Enabled</Text>
+          <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>Notifications</Text>
+            <Text style={[styles.settingValue, { color: theme.textSecondary }]}>Enabled</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
-            <Text style={styles.settingLabel}>Audio Quality</Text>
-            <Text style={styles.settingValue}>High</Text>
+          <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>Audio Quality</Text>
+            <Text style={[styles.settingValue, { color: theme.textSecondary }]}>High</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
-            <Text style={styles.settingLabel}>Auto Sync</Text>
-            <Text style={styles.settingValue}>WiFi Only</Text>
+          <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>Auto Sync</Text>
+            <Text style={[styles.settingValue, { color: theme.textSecondary }]}>WiFi Only</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem} onPress={selectStorageFolder}>
+          <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]} onPress={selectStorageFolder}>
             <View style={styles.storageSettingContent}>
-              <Text style={styles.settingLabel}>Storage Location</Text>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>Storage Location</Text>
               <Text style={styles.storageLocationText} numberOfLines={1}>{storageLocation}</Text>
               <Text style={styles.changeText}>Click here to change</Text>
               <Text style={styles.filesCountText}>

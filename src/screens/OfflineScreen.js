@@ -9,13 +9,18 @@ import {
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { useStorage } from '../context/StorageContext';
+import { useTheme } from '../context/ThemeContext';
 import MiniPlayer from '../componentes/MiniPlayer';
 import FullPlayer from '../componentes/FullPlayer';
 import audioService from '../services/audioService';
 import firebaseService from '../services/firebase';
+import contactService from '../services/contactService';
 
 const OfflineScreen = () => {
+  const { theme } = useTheme();
   const [storageFiles, setStorageFiles] = useState([]);
+  const [groupedContacts, setGroupedContacts] = useState([]);
+  const [expandedContacts, setExpandedContacts] = useState(new Set());
   const [uploadedFiles, setUploadedFiles] = useState(new Set());
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -25,16 +30,21 @@ const OfflineScreen = () => {
   const { storageLocation } = useStorage();
 
   useEffect(() => {
+    initializeContacts();
     loadStorageFiles();
     loadUploadedFiles();
     
-    // Auto-upload check every 5 seconds
+    // Auto-upload check every 30 seconds
     const interval = setInterval(() => {
       checkForNewFiles();
-    }, 5000);
+    }, 30000);
     
     return () => clearInterval(interval);
   }, [storageLocation]);
+
+  const initializeContacts = async () => {
+    await contactService.loadContacts();
+  };
 
   const loadStorageFiles = async () => {
     try {
@@ -43,6 +53,10 @@ const OfflineScreen = () => {
         const items = await RNFS.readDir(storageLocation);
         const files = items.filter(item => !item.isDirectory());
         setStorageFiles(files);
+        
+        // Group files by contact
+        const grouped = contactService.groupFilesByContact(files);
+        setGroupedContacts(grouped);
       }
     } catch (error) {
       console.log('Error loading files:', error);
@@ -80,6 +94,10 @@ const OfflineScreen = () => {
         }
         
         setStorageFiles(files);
+        
+        // Update grouped contacts
+        const grouped = contactService.groupFilesByContact(files);
+        setGroupedContacts(grouped);
       }
     } catch (error) {
       console.log('Error checking for new files:', error);
@@ -151,42 +169,71 @@ const OfflineScreen = () => {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Offline Mode</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    
 
       <ScrollView style={styles.content}>
-        <View style={styles.recordingsList}>
-          <Text style={styles.sectionTitle}>
-            Recent Recordings ({storageFiles.length})
+        <View style={[styles.recordingsList, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Recordings by Contact ({groupedContacts.length} contacts)
           </Text>
-          {storageFiles.map((file, index) => (
-            <View key={index} style={styles.recordingItem}>
-              <TouchableOpacity
-                style={styles.fileInfo}
+          {groupedContacts.map((contact, index) => (
+            <View key={index}>
+              <TouchableOpacity 
+                style={[styles.contactHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}
                 onPress={() => {
-                  setCurrentTrack(file);
-                  loadAndPlayTrack(file);
+                  const newExpanded = new Set(expandedContacts);
+                  if (expandedContacts.has(contact.phone || 'unknown')) {
+                    newExpanded.delete(contact.phone || 'unknown');
+                  } else {
+                    newExpanded.add(contact.phone || 'unknown');
+                  }
+                  setExpandedContacts(newExpanded);
                 }}
               >
-                <Text style={styles.recordingName}>{file.name}</Text>
-                <Text style={styles.recordingDate}>
-                  {(file.size / 1024).toFixed(1)}KB
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactName, { color: theme.text }]}>
+                    {contact.contactName}
+                  </Text>
+                  <Text style={[styles.contactPhone, { color: theme.textSecondary }]}>
+                    {contact.phone || 'Unknown'} • {contact.files.length} recordings
+                  </Text>
+                </View>
+                <Text style={[styles.expandIcon, { color: theme.textSecondary }]}>
+                  {expandedContacts.has(contact.phone || 'unknown') ? '▼' : '▶'}
                 </Text>
               </TouchableOpacity>
+              
+              {expandedContacts.has(contact.phone || 'unknown') && contact.files.map((file, fileIndex) => (
+                <View key={fileIndex} style={[styles.recordingItem, { borderBottomColor: theme.border, backgroundColor: theme.surface, marginLeft: 20 }]}>
+                  <TouchableOpacity
+                    style={[styles.fileInfo, { backgroundColor: theme.surface }]}
+                    onPress={() => {
+                      setCurrentTrack(file);
+                      loadAndPlayTrack(file);
+                    }}
+                  >
+                    <Text style={[styles.recordingName, { color: theme.text }]}>{file.name}</Text>
+                    <Text style={[styles.recordingDate, { color: theme.textSecondary }]}>
+                      {(file.size / 1024).toFixed(1)}KB
+                    </Text>
+                  </TouchableOpacity>
 
-              {/* Upload status */}
-              {uploadedFiles.has(file.name) ? (
-                <View style={styles.uploadedIndicator}>
-                  <Text style={styles.uploadedText}>✅</Text>
+                  {/* Upload status */}
+                  {uploadedFiles.has(file.name) ? (
+                    <View style={styles.uploadedIndicator}>
+                      <Text style={styles.uploadedText}>✓</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={() => uploadFile(file)}
+                    >
+                      <Text style={styles.uploadButtonText}>↑</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => uploadFile(file)}
-                >
-                  <Text style={styles.uploadButtonText}>⬆️</Text>
-                </TouchableOpacity>
-              )}
+              ))}
             </View>
           ))}
         </View>
@@ -224,13 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     paddingTop: 40,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 20,
-    color: '#333',
-  },
+  
   content: {
     flex: 1,
     paddingHorizontal: 20,
@@ -259,21 +300,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   uploadButton: {
-    padding: 8,
+    width: 28,
+    height: 28,
     backgroundColor: '#007AFF',
-    borderRadius: 6,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   uploadButtonText: {
-    fontSize: 16,
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   uploadedIndicator: {
-    padding: 8,
+    width: 28,
+    height: 28,
     backgroundColor: '#4CAF50',
-    borderRadius: 6,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   uploadedText: {
-    fontSize: 16,
+    fontSize: 12,
     color: '#fff',
+    fontWeight: 'bold',
+  },
+  contactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  contactPhone: {
+    fontSize: 12,
+  },
+  expandIcon: {
+    fontSize: 16,
+    marginLeft: 10,
   },
   recordingName: {
     fontSize: 16,

@@ -9,26 +9,31 @@ import OfflineScreen from './src/screens/OfflineScreen';
 import OnlineScreen from './src/screens/OnlineScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { StorageProvider } from './src/context/StorageContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
-function App() {
+const AppContent = () => {
+  const { theme, isDarkMode } = useTheme();
+  
   return (
-    <StorageProvider>
-      <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={{
-            tabBarActiveTintColor: '#007AFF',
-            tabBarInactiveTintColor: '#8E8E93',
-            tabBarStyle: {
-              backgroundColor: '#fff',
-              borderTopWidth: 1,
-              borderTopColor: '#E5E5EA',
-            },
-            headerShown: false,
-          }}>
+    <SafeAreaProvider>
+      <StatusBar 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} 
+        backgroundColor={theme.background} 
+      />
+      <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: theme.primary,
+          tabBarInactiveTintColor: theme.textSecondary,
+          tabBarStyle: {
+            backgroundColor: theme.surface,
+            borderTopWidth: 1,
+            borderTopColor: theme.border,
+          },
+          headerShown: false,
+        }}>
           <Tab.Screen 
             name="Offline" 
             component={OfflineScreen}
@@ -55,8 +60,17 @@ function App() {
           />
         </Tab.Navigator>
         </NavigationContainer>
-      </SafeAreaProvider>
-    </StorageProvider>
+    </SafeAreaProvider>
+  );
+};
+
+function App() {
+  return (
+    <ThemeProvider>
+      <StorageProvider>
+        <AppContent />
+      </StorageProvider>
+    </ThemeProvider>
   );
 }
 
