@@ -18,6 +18,13 @@ import contactService from '../services/contactService';
 
 const OfflineScreen = () => {
   const { theme } = useTheme();
+
+  const formatDuration = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return hrs > 0 ? `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` : `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   const [storageFiles, setStorageFiles] = useState([]);
   const [groupedContacts, setGroupedContacts] = useState([]);
   const [expandedContacts, setExpandedContacts] = useState(new Set());
@@ -215,7 +222,7 @@ const OfflineScreen = () => {
                   >
                     <Text style={[styles.recordingName, { color: theme.text }]}>{file.name}</Text>
                     <Text style={[styles.recordingDate, { color: theme.textSecondary }]}>
-                      {(file.size / 1024).toFixed(1)}KB
+                      {(file.size / 1024).toFixed(1)}KB • {new Date(file.mtime).toLocaleDateString()} • {formatDuration(Math.floor(file.size / 8000))}
                     </Text>
                   </TouchableOpacity>
 

@@ -14,10 +14,20 @@ import RNFS from 'react-native-fs';
 import MiniPlayer from '../componentes/MiniPlayer';
 import FullPlayer from '../componentes/FullPlayer';
 import audioService from '../services/audioService';
+import contactService from '../services/contactService';
 
 const OnlineScreen = () => {
   const { theme } = useTheme();
+
+  const formatDuration = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return hrs > 0 ? `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` : `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
   const [cloudFiles, setCloudFiles] = useState([]);
+  const [groupedContacts, setGroupedContacts] = useState([]);
+  const [expandedContacts, setExpandedContacts] = useState(new Set());
   const [localFiles, setLocalFiles] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -28,9 +38,14 @@ const OnlineScreen = () => {
   const { storageLocation } = useStorage();
 
   useEffect(() => {
+    initializeContacts();
     loadCloudFiles();
     checkLocalFiles();
   }, []);
+
+  const initializeContacts = async () => {
+    await contactService.loadContacts();
+  };
 
   const checkLocalFiles = async () => {
     try {
@@ -52,6 +67,11 @@ const OnlineScreen = () => {
       const files = await firebaseService.listFiles();
       console.log('🌐 OnlineScreen: Received files from Firebase:', files);
       setCloudFiles(files);
+      
+      // Group files by contact
+      const grouped = contactService.groupFilesByContact(files);
+      setGroupedContacts(grouped);
+      
       console.log('🌐 OnlineScreen: Cloud files state updated, count:', files.length);
     } catch (error) {
       console.log('🌐 OnlineScreen: Error loading cloud files:', error);
@@ -141,31 +161,60 @@ const OnlineScreen = () => {
         </TouchableOpacity>
 
         <View style={[styles.cloudRecordingsList, { backgroundColor: theme.surface }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Cloud Recordings ({cloudFiles.length})</Text>
-          {cloudFiles.map((file, index) => (
-            <View key={index} style={[styles.recordingItem, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Cloud Recordings by Contact ({groupedContacts.length} contacts)</Text>
+          {groupedContacts.map((contact, index) => (
+            <View key={index}>
               <TouchableOpacity 
-                style={styles.fileInfo}
-                onPress={() => playCloudFile(file)}
+                style={[styles.contactHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}
+                onPress={() => {
+                  const newExpanded = new Set(expandedContacts);
+                  if (expandedContacts.has(contact.phone || 'unknown')) {
+                    newExpanded.delete(contact.phone || 'unknown');
+                  } else {
+                    newExpanded.add(contact.phone || 'unknown');
+                  }
+                  setExpandedContacts(newExpanded);
+                }}
               >
-                <Text style={[styles.recordingName, { color: theme.text }]}>{file.name}</Text>
-                <Text style={[styles.recordingDate, { color: theme.textSecondary }]}>
-                  {(file.size / 1024).toFixed(1)}KB • {new Date(file.timeCreated).toLocaleDateString()}
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactName, { color: theme.text }]}>
+                    {contact.contactName}
+                  </Text>
+                  <Text style={[styles.contactPhone, { color: theme.textSecondary }]}>
+                    {contact.phone || 'Unknown'} • {contact.files.length} recordings
+                  </Text>
+                </View>
+                <Text style={[styles.expandIcon, { color: theme.textSecondary }]}>
+                  {expandedContacts.has(contact.phone || 'unknown') ? '▼' : '▶'}
                 </Text>
               </TouchableOpacity>
               
-              {localFiles.has(file.name) ? (
-                <View style={styles.downloadedIndicator}>
-                  <Text style={styles.downloadedText}>✓</Text>
+              {expandedContacts.has(contact.phone || 'unknown') && contact.files.map((file, fileIndex) => (
+                <View key={fileIndex} style={[styles.recordingItem, { borderBottomColor: theme.border, backgroundColor: theme.surface, marginLeft: 20 }]}>
+                  <TouchableOpacity 
+                    style={styles.fileInfo}
+                    onPress={() => playCloudFile(file)}
+                  >
+                    <Text style={[styles.recordingName, { color: theme.text }]}>{file.name}</Text>
+                    <Text style={[styles.recordingDate, { color: theme.textSecondary }]}>
+                      {(file.size / 1024).toFixed(1)}KB • {new Date(file.timeCreated).toLocaleDateString()} • {formatDuration(Math.floor(file.size / 8000))}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {localFiles.has(file.name) ? (
+                    <View style={styles.downloadedIndicator}>
+                      <Text style={styles.downloadedText}>✓</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.downloadButton}
+                      onPress={() => downloadFile(file)}
+                    >
+                      <Text style={styles.downloadButtonText}>↓</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
-                <TouchableOpacity 
-                  style={styles.downloadButton}
-                  onPress={() => downloadFile(file)}
-                >
-                  <Text style={styles.downloadButtonText}>↓</Text>
-                </TouchableOpacity>
-              )}
+              ))}
             </View>
           ))}
         </View>
@@ -284,6 +333,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  contactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  contactPhone: {
+    fontSize: 12,
+  },
+  expandIcon: {
+    fontSize: 16,
+    marginLeft: 10,
   },
   recordingName: {
     fontSize: 16,
