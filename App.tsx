@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -10,11 +10,17 @@ import OnlineScreen from './src/screens/OnlineScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { StorageProvider } from './src/context/StorageContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import backgroundService from './src/services/backgroundService';
 
 const Tab = createBottomTabNavigator();
 
 const AppContent = () => {
   const { theme, isDarkMode } = useTheme();
+  
+  useEffect(() => {
+    backgroundService.start();
+    return () => backgroundService.stop();
+  }, []);
   
   return (
     <SafeAreaProvider>
@@ -39,7 +45,7 @@ const AppContent = () => {
             component={OfflineScreen}
             options={{
               tabBarLabel: 'Offline',
-              tabBarIcon: () => <Text style={{fontSize: 20}}>📱</Text>,
+              tabBarIcon: () => <Text style={{fontSize: 20}}>🎙️</Text>,
             }}
           />
           <Tab.Screen 

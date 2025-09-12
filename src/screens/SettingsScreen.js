@@ -15,6 +15,7 @@ import {
 import RNFS from 'react-native-fs';
 import { useStorage } from '../context/StorageContext';
 import { useTheme } from '../context/ThemeContext';
+import backgroundService from '../services/backgroundService';
 
 const { PermissionModule } = NativeModules;
 
@@ -193,9 +194,15 @@ const SettingsScreen = () => {
             />
           </View>
           
-          <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-            <Text style={[styles.settingLabel, { color: theme.text }]}>Notifications</Text>
-            <Text style={[styles.settingValue, { color: theme.textSecondary }]}>Enabled</Text>
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}
+            onPress={() => {
+              backgroundService.testNotification();
+              Alert.alert('Test', 'Test notification sent! Check your notification panel.');
+            }}
+          >
+            <Text style={[styles.settingLabel, { color: theme.text }]}>Test Notification</Text>
+            <Text style={[styles.settingValue, { color: theme.textSecondary }]}>Tap to test</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
